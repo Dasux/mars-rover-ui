@@ -1,6 +1,9 @@
 # mars-rover-ui
 A U/I for mars rover
 
+![large](https://github.com/user-attachments/assets/5cda5c41-c3da-49e8-8370-4aeb6cf16941)
+
+
 **Project Overview:**
 To create a custom state of the art UI for our mars rover project that displays telemetry and provides an interface for controlling the rover.
 We are integrating 3 ESP32s in total - 2 traditional ones and 1 ESP32-CAM. The idea is to host a server using a computer, and connect to it via ESP32. The data will be trasnsmitted using websockets and be used by the clients (the ground control station and ESP32s) for communication. 
