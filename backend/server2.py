@@ -5,79 +5,79 @@ from queue import Queue
 import signal
 import sys
 
-HOST = "0.0.0.0"  # Listen on all interfaces
-PORT = 9090
+class Server:
+    def __init__(self, host="0.0.0.0", port=9090):
+        self.host = host
+        self.port = port
+        self.clients = []
+        self.telemetry_queue = Queue()
+        self.server = None
 
-clients = []
-telemetry_queue = Queue()
-server = None  # To store the server socket
-
-# Callback to handle ESP32 connection
-def handle_client(conn, addr):
-    print(f"[NEW CONNECTION] {addr} connected.")
-    clients.append(conn)
-    try:
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-
-            try:
-                telemetry = data.decode().strip()
-                telemetry_queue.put(telemetry)
-                print(f"[Telemetry] {telemetry}")
-            except Exception as e:
-                print(f"[Decode Error] {e}")
-    except Exception as e:
-        print(f"[Connection Error] {e}")
-    finally:
-        conn.close()
-        clients.remove(conn)
-        print(f"[DISCONNECTED] {addr} disconnected.")
-
-# Function to send commands to all connected ESP32s
-def send_command(command_dict):
-    message = json.dumps(command_dict) + "\n"
-    for client in clients:
+    def handle_client(self, conn, addr):
+        """Handle incoming client connections."""
+        print(f"[NEW CONNECTION] {addr} connected.")
+        self.clients.append(conn)
         try:
-            client.sendall(message.encode())
-        except:
-            continue
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    break
 
-# Gracefully stop the server and close connections
-def stop_server(signum, frame):
-    global server
-    if server:
-        print("\n[SHUTTING DOWN] Server is shutting down.")
-        for client in clients:
-            client.close()
-        server.close()
-        sys.exit(0)
+                try:
+                    telemetry = data.decode().strip()
+                    self.telemetry_queue.put(telemetry)
+                    print(f"[Telemetry] {telemetry}")
+                except Exception as e:
+                    print(f"[Decode Error] {e}")
+        except Exception as e:
+            print(f"[Connection Error] {e}")
+        finally:
+            conn.close()
+            self.clients.remove(conn)
+            print(f"[DISCONNECTED] {addr} disconnected.")
 
-# Start the server
-def start_server():
-    global server
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((HOST, PORT))
-    server.listen()
-    print(f"[LISTENING] Server listening on {HOST}:{PORT}")
+    def send_command(self, command_dict):
+        """Send a command to all connected clients."""
+        message = json.dumps(command_dict) + "\n"
+        for client in self.clients:
+            try:
+                client.sendall(message.encode())
+            except:
+                continue
 
-    while True:
-        conn, addr = server.accept()
-        thread = threading.Thread(target=handle_client, args=(conn, addr))
-        thread.daemon = True
-        thread.start()
+    def get_latest_telemetry(self):
+        """Retrieve the latest telemetry data."""
+        if not self.telemetry_queue.empty():
+            return self.telemetry_queue.get()
+        return None
 
-# For GUI to use telemetry data
-def get_latest_telemetry():
-    if not telemetry_queue.empty():
-        return telemetry_queue.get()
-    return None
+    def stop_server(self, signum=None, frame=None):
+        """Gracefully stop the server and close all connections."""
+        if self.server:
+            print("\n[SHUTTING DOWN] Server is shutting down.")
+            for client in self.clients:
+                client.close()
+            self.server.close()
+            sys.exit(0)
 
-# Register signal handler for graceful termination
-signal.signal(signal.SIGINT, stop_server)  # Handle Ctrl+C (SIGINT)
+    def start_server(self):
+        """Start the server and listen for incoming connections."""
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.bind((self.host, self.port))
+        self.server.listen()
+        print(f"[LISTENING] Server listening on {self.host}:{self.port}")
+
+        # Register signal handler for graceful termination
+        signal.signal(signal.SIGINT, self.stop_server)
+
+        while True:
+            conn, addr = self.server.accept()
+            thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+            thread.daemon = True
+            thread.start()
 
 if __name__ == "__main__":
-    start_server()
+    server = Server()
+    server.start_server()
 

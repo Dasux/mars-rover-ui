@@ -1,4 +1,6 @@
 import customtkinter as ctk
+from backend.server2 import Server
+import sys  # Import sys to ensure proper exit handling
 
 # Set appearance and scaling
 ctk.set_appearance_mode("dark")
@@ -11,6 +13,10 @@ class MarsRoverUI(ctk.CTk):
         self.title("Mars Rover UI")
         self.geometry("1200x800")
         self.resizable(False, False)
+        self.server = Server()
+
+        # Handle window close event
+        self.protocol("WM_DELETE_WINDOW", self.on_exit)
 
         # Top Frame - Connection Button
         self.top_frame = ctk.CTkFrame(self, height=50)
@@ -31,6 +37,16 @@ class MarsRoverUI(ctk.CTk):
 
         ctk.CTkLabel(self.left_controls, text="Left Controls").pack(pady=10)
 
+        # Container for buttons in the left controls section
+        self.left_button_container = ctk.CTkFrame(self.left_controls)
+        self.left_button_container.pack(expand=True, fill="both", pady=10)
+
+        self.left_button1 = ctk.CTkButton(self.left_button_container, text="Left Button 1", command=self.left_button1_action)
+        self.left_button1.pack(expand=True, fill="both", pady=5)
+
+        self.left_button2 = ctk.CTkButton(self.left_button_container, text="Left Button 2", command=self.left_button2_action)
+        self.left_button2.pack(expand=True, fill="both", pady=5)
+
         # Camera Feed Area
         self.camera_feed = ctk.CTkFrame(self.middle_frame, width=720, height=480)
         self.camera_feed.pack(side="left", expand=True, padx=10, pady=10)
@@ -41,6 +57,16 @@ class MarsRoverUI(ctk.CTk):
         self.right_controls.pack(side="left", fill="y", padx=10, pady=10)
 
         ctk.CTkLabel(self.right_controls, text="Right Controls").pack(pady=10)
+
+        # Container for buttons in the right controls section
+        self.right_button_container = ctk.CTkFrame(self.right_controls)
+        self.right_button_container.pack(expand=True, fill="both", pady=10)
+
+        self.right_button1 = ctk.CTkButton(self.right_button_container, text="Right Button 1", command=self.right_button1_action)
+        self.right_button1.pack(expand=True, fill="both", pady=5)
+
+        self.right_button2 = ctk.CTkButton(self.right_button_container, text="Right Button 2", command=self.right_button2_action)
+        self.right_button2.pack(expand=True, fill="both", pady=5)
 
         # Bottom Frame - Page Buttons
         self.bottom_frame = ctk.CTkFrame(self, height=50)
@@ -54,13 +80,36 @@ class MarsRoverUI(ctk.CTk):
 
     def connect_to_esp32(self):
         print("Attempting connection to ESP32...")
-        # You’ll call your server.py stuff here
+        self.server.start_server()
+
+    def on_exit(self):
+        """Handle the exit event when the window is closed."""
+        try:
+            print("Closing application...")
+            self.server.stop_server()  # Gracefully stop the server
+        except Exception as e:
+            print(f"Error while stopping server: {e}")
+        finally:
+            self.destroy()  # Close the application window
+            sys.exit(0)  # Ensure the program exits completely
 
     def go_to_page1(self):
         print("Navigating to Page 1")
 
     def go_to_page2(self):
         print("Navigating to Page 2")
+
+    def left_button1_action(self):
+        print("Left Button 1 clicked")
+
+    def left_button2_action(self):
+        print("Left Button 2 clicked")
+
+    def right_button1_action(self):
+        print("Right Button 1 clicked")
+
+    def right_button2_action(self):
+        print("Right Button 2 clicked")
 
 if __name__ == "__main__":
     app = MarsRoverUI()
