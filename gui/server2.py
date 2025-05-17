@@ -6,12 +6,13 @@ import signal
 import sys
 
 class Server:
-    def __init__(self, host="0.0.0.0", port=9090):
+    def __init__(self, host="0.0.0.0", port=9092):
         self.host = host
         self.port = port
         self.clients = []
         self.telemetry_queue = Queue()
         self.server = None
+        self.threads = []  # List to keep track of threads
 
     def handle_client(self, conn, addr):
         """Handle incoming client connections."""
@@ -58,7 +59,11 @@ class Server:
             for client in self.clients:
                 client.close()
             self.server.close()
-            sys.exit(0)
+
+            # No need to wait for threads to finish
+            print("[SHUTDOWN COMPLETE] Server stopped.")
+
+            # sys.exit(0)
 
     def start_server(self):
         """Start the server and listen for incoming connections."""
@@ -68,14 +73,11 @@ class Server:
         self.server.listen()
         print(f"[LISTENING] Server listening on {self.host}:{self.port}")
 
-        # Register signal handler for graceful termination
-        signal.signal(signal.SIGINT, self.stop_server)
-
         while True:
             conn, addr = self.server.accept()
-            thread = threading.Thread(target=self.handle_client, args=(conn, addr))
-            thread.daemon = True
+            thread = threading.Thread(target=self.handle_client, args=(conn, addr), daemon=True)
             thread.start()
+            self.threads.append(thread)  # Keep track of the thread
 
 if __name__ == "__main__":
     server = Server()

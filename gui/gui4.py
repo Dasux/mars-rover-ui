@@ -1,6 +1,11 @@
 import customtkinter as ctk
-from backend.server2 import Server
-import sys  # Import sys to ensure proper exit handling
+import sys
+import threading
+import socket
+import signal
+# sys.path.append('../backend')  # Adjust the path as necessary
+
+from server2 import Server  # if the file is mymodule.py
 
 # Set appearance and scaling
 ctk.set_appearance_mode("dark")
@@ -15,6 +20,13 @@ class MarsRoverUI(ctk.CTk):
         self.resizable(False, False)
         self.server = Server()
 
+        # Start the server in a separate thread
+        self.server_thread = threading.Thread(target=self.server.start_server, daemon=True)
+        self.server_thread.start()
+
+        # Handle SIGINT (Ctrl+C) in the main thread
+        signal.signal(signal.SIGINT, self.handle_sigint)
+
         # Handle window close event
         self.protocol("WM_DELETE_WINDOW", self.on_exit)
 
@@ -26,6 +38,11 @@ class MarsRoverUI(ctk.CTk):
             self.top_frame, text="Connect to ESP32", command=self.connect_to_esp32
         )
         self.connect_button.pack(pady=10)
+
+        self.close_btn = ctk.CTkButton(
+            self.top_frame, text="Close", command=self.close_server
+        )
+        self.close_btn.pack(pady=10)
 
         # Middle Frame - Controls + Camera Feed + Controls
         self.middle_frame = ctk.CTkFrame(self)
@@ -58,14 +75,18 @@ class MarsRoverUI(ctk.CTk):
 
         ctk.CTkLabel(self.right_controls, text="Right Controls").pack(pady=10)
 
-        # Container for buttons in the right controls section
+        # Define the container for buttons in the right controls section
         self.right_button_container = ctk.CTkFrame(self.right_controls)
         self.right_button_container.pack(expand=True, fill="both", pady=10)
 
-        self.right_button1 = ctk.CTkButton(self.right_button_container, text="Right Button 1", command=self.right_button1_action)
+        self.right_button1 = ctk.CTkButton(
+            self.right_button_container, text="Right Button 1", command=self.right_button1_action
+        )
         self.right_button1.pack(expand=True, fill="both", pady=5)
 
-        self.right_button2 = ctk.CTkButton(self.right_button_container, text="Right Button 2", command=self.right_button2_action)
+        self.right_button2 = ctk.CTkButton(
+            self.right_button_container, text="Right Button 2", command=self.right_button2_action
+        )
         self.right_button2.pack(expand=True, fill="both", pady=5)
 
         # Bottom Frame - Page Buttons
@@ -80,7 +101,15 @@ class MarsRoverUI(ctk.CTk):
 
     def connect_to_esp32(self):
         print("Attempting connection to ESP32...")
-        self.server.start_server()
+
+    def close_server(self):
+        print("Closing server...")
+        self.server.stop_server()
+
+    def handle_sigint(self, signum, frame):
+        """Handle SIGINT (Ctrl+C) signal."""
+        print("SIGINT received. Stopping server...")
+        self.on_exit()
 
     def on_exit(self):
         """Handle the exit event when the window is closed."""
